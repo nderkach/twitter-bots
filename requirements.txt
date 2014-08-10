@@ -1,0 +1,4 @@
+twython
+Flask
+Redis
+gunicorn
