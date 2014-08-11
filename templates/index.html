@@ -38,6 +38,13 @@
             });
       });
     </script>
+    <script type="text/javascript">
+      window.onload = function () { 
+        $.ajax("/start-streaming", {}).done(function() {
+        alert( "streamer started" );
+        });
+      };
+    </script>
   </body>
 
 </html>

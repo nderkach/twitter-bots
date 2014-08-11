@@ -4,7 +4,6 @@ from twython import Twython
 from redis import Redis
 import os
 
-
 redis_url = os.getenv('REDISTOGO_URL', 'redis://localhost:6379')
 r = Redis.from_url(redis_url)
 
@@ -15,15 +14,9 @@ token = r.get("twitter:token")
 secret = r.get("twitter:secret")
 twitter = Twython(APP_KEY, APP_SECRET, token, secret)
 
-#follow by keywords 
-with open("keywords.txt") as f:
-  for line in f:
-    keyword = line.strip()
-    for i in range(10):
-        people = twitter.search_users(q=keyword, page=i)
-        for p in people:
-            twitter.create_friendship(user_id=p['id'])
-            r.hset(p['id'], 'follows', False)
-            r.hset(p['id'], 'keyword', keyword)
-
-
+#unfollow followers
+friends = twitter.get_friends_ids().get('ids')
+followers = twitter.get_followers_ids().get('ids')
+not_following_back_ids = [x for x in friends if x not in followers]
+for nfbid in not_following_back_ids:
+    twitter.destroy_friendship(user_id=nfbid)

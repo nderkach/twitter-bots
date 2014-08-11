@@ -4,9 +4,12 @@ from flask import Flask, render_template, redirect, request, make_response, json
 from twython import Twython, TwythonError, TwythonAuthError
 from redis import Redis
 from twython import TwythonStreamer
+import os
+from threading import Thread
 
 app = Flask(__name__)
-r = Redis()
+redis_url = os.getenv('REDISTOGO_URL', 'redis://localhost:6379')
+r = Redis.from_url(redis_url)
 
 APP_KEY = "kHLxa38Nt8sT8P9lz4ymRcgHT"
 APP_SECRET = "MLZzxOoFCBCtOVCkN1yssGrEMGiR7U4BW4oGoxRphvv0zoUlWp"
@@ -42,9 +45,6 @@ def index():
         r.set("twitter:secret", auth['oauth_token_secret'])
         return redirect(auth['auth_url'])
 
-    stream = MyStreamer(APP_KEY, APP_SECRET, token, secret)
-    stream.user()
-
     return render_template('index.html')
 
 @app.route('/unfollow-nonfollowers')
@@ -55,6 +55,18 @@ def unfollow_nonfollowers():
         unfollow(nfbid)
 
     return make_response(jsonify( { 'count': len(nfblist) } ), 200)
+
+def start_user_stream():
+    token = r.get("twitter:token")
+    secret =  r.get("twitter:secret")
+    stream = MyStreamer(APP_KEY, APP_SECRET, token, secret)
+    stream.user()
+
+@app.route('/start-streaming')
+def start_streaming():
+    t = Thread(target=start_user_stream)
+    t.start()
+    return make_response(jsonify({}), 200)
 
 def get_twitter():
     token = r.get("twitter:token")
@@ -79,16 +91,18 @@ class MyStreamer(TwythonStreamer):
     def on_success(self, data):
         # check if someone favorited or retweeted your stuff 
         user_id = None
-        if 'event' in data and data['event'] == 'favorite':
+        if 'event' in data:
+            if data['event'] == 'favorite':
             #m aybe check additionally if it was a favorite/retweet or the oppooiste
             # hint: 
             # if data['event'] == 'favorite' or :
             # retweeted_count changes 
-            user_id = data['source']['id']
+                user_id = data['source']['id']
+            elif data['event'] == 'follow':
+                # someone followed you
+                r.set(data['target']['id'], 'follows', True)
         elif 'retweeted_status' in data:
             user_id = data['user']['id']
-
-        print(user_id)
 
         if user_id:
             follow(user_id)
