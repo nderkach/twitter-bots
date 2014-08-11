@@ -40,7 +40,8 @@ def index():
 
     except:
         twitter = Twython(APP_KEY, APP_SECRET)
-        auth = twitter.get_authentication_tokens(callback_url='http://localhost:5000/callback')
+        print(request.host)
+        auth = twitter.get_authentication_tokens(callback_url='http://' + request.host + '/callback')
         r.set("twitter:token", auth['oauth_token'])
         r.set("twitter:secret", auth['oauth_token_secret'])
         return redirect(auth['auth_url'])
