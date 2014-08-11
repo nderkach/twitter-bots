@@ -15,18 +15,29 @@ token = r.get("twitter:token")
 secret = r.get("twitter:secret")
 twitter = Twython(APP_KEY, APP_SECRET, token, secret)
 
+with open("keywords.txt") as fc:
+  number_of_keywords = len(fc.readlines())
+
 #follow by keywords 
 with open("keywords.txt") as f:
+  per_keyword = int(1000/number_of_keywords/24)
   for line in f:
     keyword = line.strip()
+    followed = 0
     for i in range(10):
         people = twitter.search_users(q=keyword, page=i)
+        print(len(people))
         for p in people:
-            try:
-              twitter.create_friendship(user_id=p['id'])
-              r.hset(p['id'], 'follows', False)
-              r.hset(p['id'], 'keyword', keyword)
-            except TwythonError as e:
-              pass
-
+            print(per_keyword)
+            print(followed)
+            if followed <= per_keyword:
+              try:
+                twitter.create_friendship(user_id=p['id'])
+                r.hset(p['id'], 'follows', False)
+                r.hset(p['id'], 'keyword', keyword)
+                followed += 1;
+              except TwythonError as e:
+                pass
+            else:
+              break
 
